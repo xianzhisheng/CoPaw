@@ -432,7 +432,7 @@ class ILinkClient:
         # For encryption, use base64 encoding of raw key
         aes_key_b64_for_encrypt = base64.b64encode(aes_key_raw_bytes).decode()
         # filekey: 16 bytes random hex
-        filekey = "".join(f"{random.randint(0, 255):02x}" for _ in range(16))
+        filekey = secrets.token_hex(16)
 
         # Encrypt file with AES-128-ECB + PKCS7
         encrypted_data = aes_ecb_encrypt(raw_data, aes_key_b64_for_encrypt)
