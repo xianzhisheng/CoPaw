@@ -918,7 +918,8 @@ class WeixinChannel(BaseChannel):
             body = prefix + "  " + body
 
         if not body:
-            stop_typing()
+            if stop_typing:
+                stop_typing()
             return
 
         for chunk in split_text(body):
