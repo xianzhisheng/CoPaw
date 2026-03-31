@@ -718,6 +718,15 @@ class WeixinChannel(BaseChannel):
             if from_user_id and context_token:
 
                 async def _start_typing_async():
+                    # Stop any existing typing indicator to prevent task leak
+                    with self._typing_stop_lock:
+                        old_stop = self._typing_stop_funcs.pop(
+                            from_user_id,
+                            None,
+                        )
+                    if old_stop:
+                        old_stop()
+
                     stop_func = await self.start_typing(
                         from_user_id,
                         context_token,

@@ -81,7 +81,8 @@ class ILinkClient:
         return f"{self.base_url}/{path}"
 
     async def _get(self, path: str, params: Dict[str, Any] = None) -> Any:
-        assert self._client is not None, "ILinkClient not started"
+        if self._client is None:
+            raise RuntimeError("ILinkClient not started")
         headers = make_headers(self.bot_token)
         resp = await self._client.get(
             self._url(path),
@@ -98,7 +99,8 @@ class ILinkClient:
         body: Dict[str, Any],
         timeout: float = _DEFAULT_TIMEOUT,
     ) -> Any:
-        assert self._client is not None, "ILinkClient not started"
+        if self._client is None:
+            raise RuntimeError("ILinkClient not started")
         headers = make_headers(self.bot_token)
         resp = await self._client.post(
             self._url(path),
@@ -284,7 +286,7 @@ class ILinkClient:
         Returns:
             API response dict.
         """
-        logger.info(
+        logger.debug(
             f"ILinkClient sendtyping: to_user_id={to_user_id[:20]}..., "
             f"ticket={typing_ticket[:20]}..., status={status}",
         )
@@ -299,9 +301,9 @@ class ILinkClient:
         )
         ret = resp.get("ret", -1)
         errcode = resp.get("errcode", -1)
-        logger.info(
+        logger.debug(
             f"ILinkClient sendtyping response: ret={ret}, "
-            f"errcode={errcode}, full={resp}",
+            f"errcode={errcode}",
         )
         return resp
 
@@ -331,7 +333,8 @@ class ILinkClient:
         Returns:
             Decrypted (or raw) file bytes.
         """
-        assert self._client is not None, "ILinkClient not started"
+        if self._client is None:
+            raise RuntimeError("ILinkClient not started")
 
         if encrypt_query_param:
             cdn_base = "https://novac2c.cdn.weixin.qq.com/c2c"
@@ -421,7 +424,8 @@ class ILinkClient:
                 aes_key_b64 (str): Base64-encoded AES key for media.aes_key.
                 filesize (int): Encrypted file size.
         """
-        assert self._client is not None, "ILinkClient not started"
+        if self._client is None:
+            raise RuntimeError("ILinkClient not started")
 
         # Read original file
         with open(file_path, "rb") as f:
@@ -519,6 +523,19 @@ class ILinkClient:
             f"{encrypt_query_param[:50] if encrypt_query_param else 'EMPTY'}"
             "...",
         )
+
+        # Validate encrypt_query_param before returning
+        if not encrypt_query_param:
+            logger.error(
+                "upload_media: encrypt_query_param is empty! "
+                "Sent files will appear blank on receiver side. "
+                f"Response headers: {dict(resp.headers)}",
+            )
+            raise ValueError(
+                "upload_media failed: CDN did not return "
+                "encrypt_query_param in response headers. "
+                "Files cannot be sent without this parameter.",
+            )
 
         return {
             "encrypt_query_param": encrypt_query_param,

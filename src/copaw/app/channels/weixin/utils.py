@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import base64
 import random
+import secrets
 from typing import Dict
 
 
@@ -113,6 +114,10 @@ def aes_ecb_encrypt(data: bytes, key_b64: str) -> bytes:
 
 
 def generate_aes_key_b64() -> str:
-    """Generate a random 16-byte AES key, base64-encoded."""
-    key = bytes([random.randint(0, 255) for _ in range(16)])
+    """Generate a cryptographically secure random 16-byte AES key.
+
+    Returns:
+        Base64-encoded 16-byte AES key.
+    """
+    key = secrets.token_bytes(16)
     return base64.b64encode(key).decode()
