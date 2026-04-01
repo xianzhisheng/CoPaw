@@ -909,10 +909,27 @@ class WeixinChannel(BaseChannel):
             logger.warning("weixin send_content_parts: no to_user_id")
             return
 
-        # Get stop function for typing indicator (started in _on_message)
-        stop_typing = None
+        # Stop any existing typing indicator before starting a new one
+        # (prevents multiple typing loops running simultaneously)
         with self._typing_stop_lock:
-            stop_typing = self._typing_stop_funcs.pop(to_user_id, None)
+            old_stop = self._typing_stop_funcs.pop(to_user_id, None)
+        if old_stop:
+            old_stop()
+
+        # Start typing indicator for this reply
+        # (like Telegram/Mattermost: restart typing for each send)
+        stop_typing = None
+        if to_user_id and context_token:
+            try:
+                stop_typing = await self.start_typing(
+                    to_user_id,
+                    context_token,
+                )
+                # Store stop function for cleanup
+                with self._typing_stop_lock:
+                    self._typing_stop_funcs[to_user_id] = stop_typing
+            except Exception as e:
+                logger.warning(f"weixin start_typing failed: {e}")
 
         prefix = m.get("bot_prefix", "") or self.bot_prefix or ""
         text_parts: List[str] = []
@@ -1173,24 +1190,36 @@ class WeixinChannel(BaseChannel):
         except Exception as e:
             logger.warning(f"weixin sendtyping initial failed: {e}")
 
-        def stop():
-            """Stop typing indicator."""
+        def stop(send_cancel: bool = True):
+            """Stop typing indicator.
+
+            Args:
+                send_cancel: If True, send explicit cancel (status=2) to
+                    immediately hide typing indicator. Set to False to let
+                    it timeout naturally.
+            """
             nonlocal stop_called
             if stop_called:
                 return
             stop_called = True
             stop_event.set()
 
-            # Send cancel status
-            async def _cancel():
-                try:
-                    await self._client.sendtyping(user_id, ticket, status=2)
-                except Exception as e:
-                    logger.debug(f"weixin sendtyping cancel failed: {e}")
+            # Send cancel status to immediately hide typing indicator
+            if send_cancel:
 
-            # Run cancel in background
-            if loop and loop.is_running():
-                asyncio.create_task(_cancel())
+                async def _cancel():
+                    try:
+                        await self._client.sendtyping(
+                            user_id,
+                            ticket,
+                            status=2,
+                        )
+                    except Exception as e:
+                        logger.debug(f"weixin sendtyping cancel failed: {e}")
+
+                # Run cancel in background
+                if loop and loop.is_running():
+                    asyncio.create_task(_cancel())
 
         return stop
 
