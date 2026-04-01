@@ -462,7 +462,7 @@ class ILinkClient:
             aeskey=aes_key_hex,  # Send hex-encoded key to API
         )
 
-        logger.info(f"getuploadurl response: {upload_resp}")
+        logger.debug(f"getuploadurl response: {upload_resp}")
         upload_url = upload_resp.get("upload_full_url", "")
         if not upload_url:
             # API might return upload_param instead,
@@ -477,7 +477,7 @@ class ILinkClient:
                     f"{cdn_base}/upload?encrypted_query_param={enc_param}"
                     f"&filekey={filekey}"
                 )
-                logger.info(
+                logger.debug(
                     "Constructed upload URL from upload_param "
                     f"with filekey={filekey}",
                 )
@@ -494,7 +494,7 @@ class ILinkClient:
             "Content-Type": "application/octet-stream",
         }
 
-        logger.info(
+        logger.debug(
             f"Uploading to URL: {upload_url[:100]}...",
         )
         resp = await self._client.post(
@@ -503,7 +503,7 @@ class ILinkClient:
             headers=headers,
             timeout=120.0,
         )
-        logger.info(
+        logger.debug(
             f"Upload response status: {resp.status_code}, "
             f"headers: {dict(resp.headers)}",
         )
@@ -610,7 +610,6 @@ class ILinkClient:
         # Upload image
         upload_result = await self.upload_media(image_path, 1, to_user_id)
 
-        # Log media parameters for debugging
         # Log media parameters for debugging
         encrypt_preview = (
             upload_result["encrypt_query_param"][:50]

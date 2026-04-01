@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import base64
-import random
 import secrets
 from typing import Dict
 
@@ -15,7 +14,7 @@ def make_headers(bot_token: str = "") -> Dict[str, str]:
     X-WECHAT-UIN: base64(str(random_uint32)) — anti-replay, per request.
     Authorization: Bearer <bot_token> — only set when token is available.
     """
-    uin_val = random.randint(0, 0xFFFFFFFF)
+    uin_val = secrets.randbelow(0xFFFFFFFF)
     uin_b64 = base64.b64encode(str(uin_val).encode()).decode()
     headers: Dict[str, str] = {
         "Content-Type": "application/json",
